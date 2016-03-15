@@ -1,0 +1,128 @@
+<script src="https://netpie.io/microgear.js"></script>
+
+<style>
+	body {
+		text-align:center;	
+		font-size:24px;
+	}
+
+	div{
+		margin: 5px;
+	}
+
+	#N, #L, #F, #R, #B {
+		display:inline-block;
+		width:50px;
+		height:50px;
+		padding:20px;
+		text-align:center;
+		font-size:24px;
+		font-weight:bold;
+	}
+	
+	#L, #F, #R, #B {
+		border:1px solid black;
+		border-radius:10px;
+	}
+
+	#state {
+		margin: 0 0 25px 0;
+		text-align: right;
+	}
+</style>
+
+<script>
+	// Setup key
+	const APPKEY = "APPKEY";
+	const APPSECRET = "APPSECRET";
+	const APPID = "APPID";
+
+	var microgear = Microgear.create({
+		gearkey: APPKEY,
+		gearsecret: APPSECRET
+	});
+
+	var sendevent;
+	var ctrlEvent = '';
+	var ctrlButton = {'38':'F','40':'B','37':'L','39':'R'};
+	var ctrlString = {'F':'Forward','B':'Backward','L':'Turn Left','R':'Turn Right'};
+	var microgearonline = false;
+
+	function sendEvent(ev){
+		if (microgearonline) {
+			ctrlEvent = ev;
+			document.getElementById("des").innerHTML = ctrlString[ev];
+			microgear.chat("robotcar",ctrlEvent);
+			sendevent = setInterval(function(){
+				microgear.chat("robotcar",ctrlEvent);
+			},200);
+		}
+	}
+
+	function touchstart(e) {
+		e = e || window.event;
+		if ((e.keyCode == '38' || e.keyCode == '40' || e.keyCode == '37' || e.keyCode == '39') && ctrlEvent!=ctrlButton[e.keyCode]) {
+			clearInterval(sendevent);
+			sendEvent(ctrlButton[e.keyCode]);
+			document.getElementById(ctrlButton[e.keyCode]).style.backgroundColor = "yellow";
+		}else if ((e == 'F' || e == 'B' || e == 'L' || e == 'R') && ctrlEvent != e) {
+			document.getElementById(e).style.backgroundColor = "yellow";
+			clearInterval(sendevent);
+			sendEvent(e);
+		}
+	}
+	
+	function touchend(e) {
+		e = e || window.event;
+		clearInterval(sendevent);
+		ctrlEvent = '';
+		document.getElementById("des").innerHTML = '';
+		if (e.keyCode == '38' || e.keyCode == '40' || e.keyCode == '37' || e.keyCode == '39') {
+			document.getElementById(ctrlButton[e.keyCode]).style.backgroundColor = "#FFF";
+		}else if (e == 'F' || e == 'B' || e == 'L' || e == 'R') {
+			document.getElementById(e).style.backgroundColor = "#FFF";
+		}
+	}
+
+	var online = 0;
+	microgear.on('message', function(topic,data) {
+		if(data=="O"){
+			if((online%3)==0)
+				document.getElementById("state").style.color = "red";
+			if((online%3)==1)
+				document.getElementById("state").style.color = "green";
+			if((online%3)==2)
+				document.getElementById("state").style.color = "blue";
+			online++;
+		}
+	});
+
+	microgear.on('connected', function() {
+		microgear.setname('controller');
+		document.getElementById("state").innerHTML = "Online";
+		document.onkeydown = touchstart;
+		document.onkeyup = touchend;
+		microgearonline = true;
+	});
+
+	microgear.on('disconnected', function() {
+		document.getElementById("state").innerHTML = '<font style="color:#c0c0c0">Offline</font>';
+		microgearonline = false;
+	});
+
+	microgear.resettoken(function(err) {
+		microgear.connect(APPID);
+	});
+	
+</script>
+
+<div id="state"><font style="color:#c0c0c0">Offline</font></div>
+<div>
+    <div id="F" onmousedown="touchstart('F')" onmouseup="touchend('F')" ontouchstart="touchstart('F')" ontouchend="touchend('F')">F</div>
+</div>
+<div>
+    <div id="L" onmousedown="touchstart('L')" onmouseup="touchend('L')" ontouchstart="touchstart('L')" ontouchend="touchend('L')">L</div>
+    <div id="B" onmousedown="touchstart('B')" onmouseup="touchend('B')" ontouchstart="touchstart('B')" ontouchend="touchend('B')">B</div>
+    <div id="R" onmousedown="touchstart('R')" onmouseup="touchend('R')" ontouchstart="touchstart('R')" ontouchend="touchend('R')">R</div>
+</div>
+<div id="des"></div>
